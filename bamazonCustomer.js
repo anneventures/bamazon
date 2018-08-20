@@ -9,25 +9,27 @@ var connection = mysql.createConnection({
 	database:"bamazon"
 });
 
-function afterConnection() {
-	connection.query("SELECT * FROM products", function(err, result, fields) {
-		if(err) throw err;
-		console.log(result);
-		// connection.end();
-		askID();
-	});
-};
-
 connection.connect(function(err) {
 	if(err) throw err;
-	afterConnection();
+	begin();
 });
+
+function begin() {
+	connection.query("SELECT * FROM products", function(err, res) {
+		if(err) throw err;
+		res.forEach(row => {
+			console.log(res)
+		});
+		questions();
+	})
+}
+
 
 // The app should then prompt users with two messages.
 // The first should ask them the ID of the product they would like to buy.
 // The second message should ask how many units of the product they would like to buy.
 
-function askID() {
+function questions() {
 	inquirer
 	.prompt([
 		{
@@ -57,23 +59,37 @@ function askID() {
 
 		var itemID = ans.itemID;
 		var units = ans.units;
+		condition(itemID,units)
+	});
+}
 
-		function condition(itemID, units) {
-			connection.query("SELECT * FROM products", function(err,res) {
-					if(err) throw err;
-					var item;
-					for(var i = 0; i < res.length; i++) {
-						if(res[i].item_id == itemID) {
-							item = res[i]
-						}
+	function condition(itemID, units) {
+		connection.query("SELECT * FROM products", function(err,res) {
+				if(err) throw err;
+				var item;
+				for(var i = 0; i < res.length; i++) {
+					if(res[i].item_id == itemID) {
+						item = res[i]
 					}
-				console.log(item, "item found")
-					if(item.stock_quantity >= units) {
-						orderSuccess(item, itemID, units)
-						connection.end()
-					} else {
-						console.log("insufficient quantity")
-						connection.end();
-					}
-			});
-		};
+				}
+			console.log(item, "item found")
+				if(item.stock_quantity >= units) {
+					orderSuccess(item, itemID, units)
+					connection.end()
+				} else {
+					console.log("insufficient quantity")
+					connection.end();
+				}
+		})
+	};
+
+	function orderSuccess (itemObj, itemID, units) {
+		var newUnits = itemObj.stock_quantity - units;
+		var itemSales = itemObj.price * units;
+		var query1 = "UPDATE products SET stock_quantity = ? where ?";
+		var query2 = "UPDATE products SET product_sales = ? where ?";
+		connection.query(query1,[newUnits, {item_id: itemID}], function (error, res) {				
+		})
+		connection.query(query2, [itemSales, {item_id: itemID}], function (error, res) {				
+		})
+	}
